@@ -1,11 +1,11 @@
 # my_shelf_st
-# 📦 JANコード検索サイトを正規URL (www.jancodelookup.com) に戻した安定版
-# 🔐 APIキーは .env から安全読込
-# 🧠 OCR + JANLOOKUP + Google Sheets 連携
+# 📦 JANCodeLookup + Google Sheets 連携 + OpenAI OCR
+# 🔐 APIキー取得を Secrets / .env 両対応に改良
+# 🌐 Streamlit Cloud & ローカル両方で動作可
 
 import streamlit as st
-st.set_page_config(page_title="my_shelf v1.109", layout="wide")
-st.title("📦 my_shelf v1.109（JANCodeLookup + GS + .env対応）")
+st.set_page_config(page_title="my_shelf v1.201", layout="wide")
+st.title("📦 my_shelf v1.201（JANCodeLookup + GS + Secrets/.env対応）")
 
 from PIL import Image
 import io, base64, re, unicodedata, requests, os
@@ -19,13 +19,23 @@ from io import BytesIO
 from dotenv import load_dotenv
 
 # ------------------------------------------------------------
-# 🔐 OpenAI APIキー（.envから安全に取得）
+# 🔐 OpenAI APIキー（Secrets or .env 両対応）
 # ------------------------------------------------------------
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"), override=True)
-api_key = os.getenv("OPENAI_API_KEY")
+# ① Secrets → ② .env → ③ エラー停止 の順で確認
+api_key = None
+try:
+    api_key = st.secrets.get("OPENAI_API_KEY")
+except Exception:
+    pass
+
 if not api_key:
-    st.error("❌ OPENAI_API_KEY が設定されていません。.envファイルを確認してください。")
+    load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"), override=True)
+    api_key = os.getenv("OPENAI_API_KEY")
+
+if not api_key:
+    st.error("❌ OpenAI APIキーが見つかりません。Secretsまたは.envを確認してください。")
     st.stop()
+
 client = OpenAI(api_key=api_key)
 
 # ------------------------------------------------------------
@@ -51,7 +61,7 @@ def analyze_code_with_openai(image_bytes: bytes, allow_alnum=False):
     try:
         image_b64 = base64.b64encode(image_bytes).decode("utf-8")
         directive = "数字のみを半角で返してください。" if not allow_alnum else "英数字のみを半角で返してください。"
-        prompt = f"この画像の中央付近に印字されているコードを読み取り、{directive}説明や余計な文字は不要です。"
+        prompt = f"この画像の中央付近に印字されたコードを読み取り、{directive}説明や余計な文字は不要です。"
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -73,7 +83,7 @@ def analyze_code_with_openai(image_bytes: bytes, allow_alnum=False):
         return ""
 
 # ------------------------------------------------------------
-# 🛒 JANCodeLookup（1.010仕様に戻す）
+# 🛒 JANCodeLookup（1.010仕様）
 # ------------------------------------------------------------
 def get_product_info(raw_code: str):
     try:
@@ -222,4 +232,4 @@ export_excel()
 st.subheader("④ Google Sheetsを開く")
 sheet_url = "https://docs.google.com/spreadsheets/d/1lIDwaGMx-bMUXsLsF4p9_KmaXCyDPZIVeIdBen6ebE0/edit#gid=0"
 st.markdown(f"🔗 [Google Sheetsを開く]({sheet_url})", unsafe_allow_html=True)
-st.caption("© 2025 my_shelf v1.109 — 安定版（www.jancodelookup.com + .envキー対応）")
+st.caption("© 2025 my_shelf v1.201 — Secrets/.env対応 完全安定版")
