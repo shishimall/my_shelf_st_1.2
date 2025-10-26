@@ -32,7 +32,8 @@ if not api_key:
     st.error("❌ OpenAI APIキーが見つかりません。Secretsまたは.envを確認してください。")
     st.stop()
 
-client = OpenAI(api_key=api_key)
+os.environ["OPENAI_API_KEY"] = api_key
+client = OpenAI()
 
 # ------------------------------------------------------------
 # 🧮 正規化関数
